@@ -18,9 +18,11 @@ class TopicPublisher(Node):
 
         if cmd == 'pub':
             num = 666
+            self.msg.data = num
             self.get_logger().info(f'Publishing >>> {num}')
-            while rclpy.ok():
-                self.msg.data = num
+            for _ in range(10):
+                if not rclpy.ok:
+                    break
                 self.pub.publish(self.msg)
                 time.sleep(0.1)
             self.get_logger().info(f'Published >>> {num}')

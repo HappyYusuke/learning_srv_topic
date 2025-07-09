@@ -44,23 +44,24 @@ class ServiceServer(Node):
         self.pub.publish(self.cmd)
 
         while rclpy.ok():
-            rclpy.spin_once(self, timeout_sec=0.01)
             if self.num == 666:
+                self.num = None
                 break
 
         res.success = True
         res.message = 'finished'
         self.get_logger().info('finished handle_request')
+        return res
 
 
 def main():
     rclpy.init()
     node = ServiceServer()
     executor = MultiThreadedExecutor()
-    executor.add_node(node)
+    #executor.add_node(node)
 
     try:
-        executor.spin()
+        rclpy.spin(node, executor)
     finally:
         node.destroy_node()
         rclpy.shutdown()
