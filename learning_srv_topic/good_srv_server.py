@@ -1,4 +1,5 @@
 import time
+import threading
 import rclpy
 from rclpy.node import Node
 from rclpy.executors import MultiThreadedExecutor
@@ -33,24 +34,36 @@ class ServiceServer(Node):
         # Value
         self.cmd = String()
         self.num = None
+        self.wait_event = threading.Event()
 
     def callback(self, msg):
-        self.num = msg.data
+        print(f'TOPIC: {threading.currentThread().getName()}')
+        if msg.data == 666:
+            self.num = msg.data
+            self.wait_event.set()
 
     def handle_request(self, req, res):
+        print(f'SRV: {threading.currentThread().getName()}')
         self.get_logger().info('Executing handle_request')
         
+        self.wait_event.clear()
+        self.num = None
+
         self.cmd.data = 'pub'
         self.pub.publish(self.cmd)
 
-        while rclpy.ok():
-            if self.num == 666:
-                self.num = None
-                break
+        timeout_sec = 5.0
+        is_event_set = self.wait_event.wait(timeout=timeout_sec)
 
-        res.success = True
-        res.message = 'finished'
-        self.get_logger().info('finished handle_request')
+        if is_event_set and self.num == 666:
+            res.success = True
+            res.message = 'finished'
+            self.get_logger().info('finished handle_request')
+        else:
+            res.success = False
+            res.message = f'Timeout'
+            self.get_logger().warn('Timeout in handle_request.')
+
         return res
 
 
@@ -58,7 +71,6 @@ def main():
     rclpy.init()
     node = ServiceServer()
     executor = MultiThreadedExecutor()
-    #executor.add_node(node)
 
     try:
         rclpy.spin(node, executor)
